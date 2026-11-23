@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSpacia - Géométrie dans l'espace (Terminale Spé Maths)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        space: { 900: '#0b0f19', 800: '#111827', 700: '#1f2937', 600: '#374151' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                macros: {
+                    vv: ["\\overrightarrow{#1}", 1]
+                }
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        body { font-family: 'Space Grotesk', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        
+        /* Thème Sombre (Défaut) */
+        [data-theme="dark"] body { background-color: #0b0f19; color: #f3f4f6; }
+        [data-theme="dark"] .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        [data-theme="dark"] .glass-card { background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        [data-theme="dark"] .option-card { background: rgba(31, 41, 55, 0.4); border-color: rgba(255, 255, 255, 0.1); color: #e5e7eb; }
+        [data-theme="dark"] .option-card:hover { background: rgba(55, 65, 81, 0.6); border-color: rgba(59, 130, 246, 0.5); }
+
+        /* Thème Clair */
+        [data-theme="light"] body { background-color: #f3f4f6; color: #111827; }
+        [data-theme="light"] .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        [data-theme="light"] .option-card { background: rgba(243, 244, 246, 0.8); border-color: rgba(0, 0, 0, 0.1); color: #1f2937; }
+        [data-theme="light"] .option-card:hover { background: rgba(229, 231, 235, 0.9); border-color: rgba(59, 130, 246, 0.5); }
+
+        .glass-card:hover { transform: translateY(-2px); transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <header class="glass sticky top-0 z-50 border-b px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="showMap()">
+            <div class="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-cube text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide">GeoSpacia</h1>
+                <p class="text-xs text-blue-400">Terminale Spécialité Mathématiques</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="toggleTheme()" class="glass px-3 py-1.5 rounded-full text-sm flex items-center space-x-1 hover:opacity-80 transition" title="Changer de thème">
+                <i id="theme-icon" class="fa-solid fa-moon"></i>
+            </button>
+            <div class="glass px-3 py-1.5 rounded-full flex items-center space-x-2 text-sm">
+                <i class="fa-solid fa-star text-amber-400"></i>
+                <span id="global-xp" class="font-bold">0 XP</span>
+            </div>
+            <div class="glass px-3 py-1.5 rounded-full flex items-center space-x-2 text-sm">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span id="global-level" class="font-bold">Niveau 1</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow p-6 max-w-4xl mx-auto w-full">
+        <div id="map-view">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Parcours de Géométrie dans l'Espace</h2>
+                <p class="opacity-75 max-w-xl mx-auto text-sm">Chaque session tire un nombre défini de questions (fixes + générées avec des nombres aléatoires).</p>
+                
+                <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
+                    <div class="glass px-4 py-2 rounded-xl flex items-center space-x-3 text-sm">
+                        <span class="opacity-80">Questions par session :</span>
+                        <select id="q-count-select" onchange="updateQCount(this.value)" class="bg-transparent font-bold focus:outline-none cursor-pointer">
+                            <option value="5" class="bg-gray-800 text-white">5</option>
+                            <option value="10" class="bg-gray-800 text-white" selected>10</option>
+                            <option value="15" class="bg-gray-800 text-white">15</option>
+                            <option value="20" class="bg-gray-800 text-white">20</option>
+                        </select>
+                    </div>
+                    <button onclick="startExam()" class="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold rounded-xl shadow-lg shadow-orange-600/30 transition text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        <span>Mode Examen (20 Q / Chrono)</span>
+                    </button>
+                    <button id="review-btn" onclick="startErrorReview()" class="hidden px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-semibold rounded-xl shadow-lg shadow-rose-600/30 transition text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span id="review-btn-text">Réviser mes erreurs (0)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="missions-grid"></div>
+        </div>
+
+        <div id="module-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="confirmExitModule()" class="px-4 py-2 rounded-xl glass text-sm hover:opacity-80 flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Retour au menu</span>
+                </button>
+                <div class="flex items-center space-x-4">
+                    <span id="exam-timer" class="hidden font-mono font-bold text-amber-400 glass px-3 py-1.5 rounded-xl"><i class="fa-solid fa-clock mr-2"></i>20:00</span>
+                    <span id="mission-title" class="font-bold text-lg text-blue-400"></span>
+                </div>
+            </div>
+
+            <div class="glass p-8 rounded-2xl shadow-xl">
+                <div id="question-container"></div>
+                <div id="feedback" class="mt-6 hidden p-4 rounded-xl text-sm"></div>
+
+                <div class="mt-8 flex justify-between items-center">
+                    <span id="score-display" class="text-sm opacity-75"></span>
+                    <div class="space-x-3">
+                        <button id="restart-btn" onclick="openMission(currentMissionId)" class="hidden px-6 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all">
+                            <i class="fa-solid fa-rotate mr-2"></i> Nouvelle série
+                        </button>
+                        <button id="next-btn" onclick="loadNextQuestion()" class="hidden px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition">
+                            Question suivante <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-6 text-xs opacity-50 border-t mt-10">
+        GeoSpacia &bull; Application Pédagogique Interactive &bull; Terminale Spécialité Mathématiques
+    </footer>
+
+    <script>
+        let QUESTIONS_PER_SESSION = 10;
+        let gameState = { xp: 0, missions: {}, errorQueue: [] };
+
+        for(let i=1; i<=8; i++) {
+            gameState.missions[i] = { progress: 0, status: 'À découvrir' };
+        }
+
+        let currentMissionId = null;
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let sessionScore = 0;
+        let isExamMode = false;
+        let isErrorReviewMode = false;
+        let examTimerInterval = null;
+        let timeLeft = 1200;
+
+        const missionTitles = {
+            1: "Mission 1 : Vecteurs de l'espace",
+            2: "Mission 2 : Droites, plans & coplanarité",
+            3: "Mission 3 : Positions relatives",
+            4: "Mission 4 : Représentation paramétrique",
+            5: "Mission 5 : Produit scalaire",
+            6: "Mission 6 : Orthogonalité",
+            7: "Mission 7 : Équations cartésiennes de plans",
+            8: "Mission 8 : Distances et droites/plans"
+        };
+
+        const missionDescs = {
+            1: "Somme, produit par un réel, coordonnées, milieu.",
+            2: "Colinéarité, coplanarité et règles d'incidence.",
+            3: "Parallélisme, intersections et droites non coplanaires.",
+            4: "Équations paramétriques, vecteurs directeurs, appartenance.",
+            5: "Calculs de produits scalaires à partir des coordonnées.",
+            6: "Test d'orthogonalité de vecteurs et de directions.",
+            7: "Vecteur normal et équations cartésiennes de plans.",
+            8: "Calcul de distances point-plan et positions droite/plan."
+        };
+
+        function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        function rndNZ(min, max) { let n = 0; while (n === 0) n = rnd(min, max); return n; }
+        function shuffle(array) {
+            const a = array.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+        function fmt(n) { return n < 0 ? '(' + n + ')' : '' + n; }
+        function tri(a, b, c) { return '(' + a + '; ' + b + '; ' + c + ')'; }
+        function sameTri(t1, t2) { return t1[0] === t2[0] && t1[1] === t2[1] && t1[2] === t2[2]; }
+
+        function buildTripletOptions(good, distractors) {
+            const all = [good];
+            distractors.forEach(d => { if (!all.some(x => sameTri(x, d))) all.push(d); });
+            let safety = 0;
+            while (all.length < 4 && safety < 50) {
+                const d = [good[0] + rndNZ(-3, 3), good[1] + rndNZ(-3, 3), good[2] + rndNZ(-3, 3)];
+                if (!all.some(x => sameTri(x, d))) all.push(d);
+                safety++;
+            }
+            const opts = all.slice(0, 4).map(t => '$' + tri(t[0], t[1], t[2]) + '$');
+            return { options: opts, correct: 0 };
+        }
+
+        /* ---------- TOUS LES GÉNÉRATEURS ORIGINAUX (MISSIONS 1 À 8) ---------- */
+        const generators = {
+            1: [
+                () => {
+                    const u = [rnd(-5,5), rnd(-5,5), rnd(-5,5)], v = [rnd(-5,5), rnd(-5,5), rnd(-5,5)];
+                    const s = [u[0]+v[0], u[1]+v[1], u[2]+v[2]];
+                    const o = buildTripletOptions(s, [[u[0]-v[0], u[1]-v[1], u[2]-v[2]], [u[0]*v[0], u[1]*v[1], u[2]*v[2]], [s[0], s[2], s[1]]]);
+                    return { q: `Soit $\\vv{u}${tri(u[0],u[1],u[2])}$ et $\\vv{v}${tri(v[0],v[1],v[2])}$. Coordonnées de $\\vv{u} + \\vv{v}$ ?`, options: o.options, correct: o.correct, explanation: `On additionne coordonnée par coordonnée : $${tri(s[0],s[1],s[2])}$.` };
+                },
+                () => {
+                    const u = [rnd(-6,6), rnd(-6,6), rnd(-6,6)], v = [rnd(-6,6), rnd(-6,6), rnd(-6,6)];
+                    const s = [u[0]-v[0], u[1]-v[1], u[2]-v[2]];
+                    const o = buildTripletOptions(s, [[u[0]+v[0], u[1]+v[1], u[2]+v[2]], [v[0]-u[0], v[1]-u[1], v[2]-u[2]], [s[0], s[1], s[2]+1]]);
+                    return { q: `Soit $\\vv{u}${tri(u[0],u[1],u[2])}$ et $\\vv{v}${tri(v[0],v[1],v[2])}$. Coordonnées de $\\vv{u} - \\vv{v}$ ?`, options: o.options, correct: o.correct, explanation: `On soustrait coordonnée par coordonnée : $${tri(s[0],s[1],s[2])}$.` };
+                },
+                () => {
+                    const k = rndNZ(-4,4), w = [rnd(-5,5), rnd(-5,5), rnd(-5,5)];
+                    const s = [k*w[0], k*w[1], k*w[2]];
+                    const o = buildTripletOptions(s, [[w[0]+k, w[1]+k, w[2]+k], [-s[0], -s[1], -s[2]], [k*w[0], w[1], w[2]]]);
+                    return { q: `Soit $\\vv{w}${tri(w[0],w[1],w[2])}$. Coordonnées de $${k}\\vv{w}$ ?`, options: o.options, correct: o.correct, explanation: `On multiplie chaque coordonnée par $${k}$ : $${tri(s[0],s[1],s[2])}$.` };
+                },
+                () => {
+                    const A = [rnd(-5,5), rnd(-5,5), rnd(-5,5)], B = [rnd(-5,5), rnd(-5,5), rnd(-5,5)];
+                    const s = [B[0]-A[0], B[1]-A[1], B[2]-A[2]];
+                    const o = buildTripletOptions(s, [[A[0]-B[0], A[1]-B[1], A[2]-B[2]], [A[0]+B[0], A[1]+B[1], A[2]+B[2]], [s[0], s[1]+1, s[2]]]);
+                    return { q: `Soit $A${tri(A[0],A[1],A[2])}$ et $B${tri(B[0],B[1],B[2])}$. Coordonnées de $\\vv{AB}$ ?`, options: o.options, correct: o.correct, explanation: `$\\vv{AB}(x_B-x_A; y_B-y_A; z_B-z_A) = ${tri(s[0],s[1],s[2])}$.` };
+                },
+                () => {
+                    const A = [rnd(-4,4)*2, rnd(-4,4)*2, rnd(-4,4)*2], B = [rnd(-4,4)*2, rnd(-4,4)*2, rnd(-4,4)*2];
+                    const s = [(A[0]+B[0])/2, (A[1]+B[1])/2, (A[2]+B[2])/2];
+                    const o = buildTripletOptions(s, [[A[0]+B[0], A[1]+B[1], A[2]+B[2]], [(B[0]-A[0])/2, (B[1]-A[1])/2, (B[2]-A[2])/2], [s[0]+1, s[1], s[2]]]);
+                    return { q: `Soit $A${tri(A[0],A[1],A[2])}$ et $B${tri(B[0],B[1],B[2])}$. Milieu $I$ de $[AB]$ ?`, options: o.options, correct: o.correct, explanation: `Moyenne des coordonnées : $I${tri(s[0],s[1],s[2])}$.` };
+                }
+            ],
+            2: [
+                () => {
+                    const u = [rndNZ(-3,3), rndNZ(-3,3), rndNZ(-3,3)], m = rndNZ(-3,3), k = u[1]*m;
+                    const opts = [k, k+1, -k, k+2];
+                    const uniq = []; opts.forEach(x => { if(uniq.indexOf(x)===-1) uniq.push(x); });
+                    while(uniq.length < 4) uniq.push(k + rndNZ(-3,3));
+                    return { q: `Soit $\\vv{u}${tri(u[0],u[1],u[2])}$. Pour quelle valeur de $k$ le vecteur $\\vv{v}${tri(m*u[0], 'k', m*u[2])}$ est-il colinéaire à $\\vv{u}$ ?`, options: uniq.slice(0,4).map(x => `$k = ${x}$`), correct: 0, explanation: `$\\vv{v} = ${m}\\vv{u}$, donc $k = ${m} \\times ${fmt(u[1])} = ${k}$.` };
+                },
+                () => {
+                    const A = [rnd(-3,3), rnd(-3,3), rnd(-3,3)], d = [rndNZ(-2,2), rndNZ(-2,2), rndNZ(-2,2)], t = rndNZ(-3,3);
+                    const B = [A[0]+d[0], A[1]+d[1], A[2]+d[2]], C = [A[0]+t*d[0], A[1]+t*d[1], A[2]+t*d[2]];
+                    return { q: `Soit $A${tri(A[0],A[1],A[2])}$, $B${tri(B[0],B[1],B[2])}$ et $C${tri(C[0],C[1],C[2])}$. Sont-ils alignés ?`, options: [`Oui, $\\vv{AC} = ${t}\\vv{AB}$`, 'Non, non colinéaires', 'Non, coordonnées différentes', 'Oui, $\\vv{AB} = \\vv{AC}$'], correct: 0, explanation: `$\\vv{AC} = ${t}\\vv{AB}$, les points sont alignés.` };
+                }
+            ],
+            3: [
+                () => {
+                    const u = [rndNZ(-3,3), rndNZ(-3,3), rndNZ(-3,3)], k = rndNZ(-3,3);
+                    const v = [k*u[0], k*u[1], k*u[2]];
+                    return { q: `Deux droites ont pour vecteurs directeurs $\\vv{u}${tri(u[0],u[1],u[2])}$ et $\\vv{v}${tri(v[0],v[1],v[2])}$. Sont-elles :`, options: ['Parallèles ou confondues', 'Sécantes', 'Non coplanaires', 'Orthogonales'], correct: 0, explanation: `$\\vv{v} = ${k}\\vv{u}$ : vecteurs directeurs colinéaires, droites parallèles ou confondues.` };
+                }
+            ],
+            4: [
+                () => {
+                    const A = [rnd(-5,5), rnd(-5,5), rnd(-5,5)], d = [rndNZ(-4,4), rndNZ(-4,4), rndNZ(-4,4)];
+                    const o = buildTripletOptions(d, [[A[0], A[1], A[2]], [-d[0], -d[1], -d[2]], [d[0], d[2], d[1]]]);
+                    return { q: `Soit $\\mathcal{D} : \\begin{cases} x = ${A[0]} + ${fmt(d[0])}t \\\\ y = ${A[1]} + ${fmt(d[1])}t \\\\ z = ${A[2]} + ${fmt(d[2])}t \\end{cases}$. Un vecteur directeur est :`, options: o.options.map(x => x.replace(/^\$/, '$\\vv{u}')), correct: o.correct, explanation: `Les coefficients de $t$ donnent le vecteur directeur $${tri(d[0],d[1],d[2])}$.` };
+                },
+                () => {
+                    const A = [rnd(-4,4), rnd(-4,4), rnd(-4,4)], d = [rndNZ(-3,3), rndNZ(-3,3), rndNZ(-3,3)], t = rndNZ(-3,3);
+                    const M = [A[0]+t*d[0], A[1]+t*d[1], A[2]+t*d[2]];
+                    return { q: `Soit $\\mathcal{D} : \\begin{cases} x = ${A[0]}+${fmt(d[0])}t \\\\ y = ${A[1]}+${fmt(d[1])}t \\\\ z = ${A[2]}+${fmt(d[2])}t \\end{cases}$. Le point $M${tri(M[0],M[1],M[2])}$ appartient-il à $\\mathcal{D}$ ?`, options: [`Oui, pour $t = ${t}$`, 'Non, valeurs incompatibles', 'Oui, pour $t = 0$', 'Non'], correct: 0, explanation: `Pour $t = ${t}$, on vérifie les trois coordonnées.` };
+                }
+            ],
+            5: [
+                () => {
+                    const u = [rnd(-4,4), rnd(-4,4), rnd(-4,4)], v = [rnd(-4,4), rnd(-4,4), rnd(-4,4)];
+                    const ps = u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+                    return { q: `Soit $\\vv{u}${tri(u[0],u[1],u[2])}$ et $\\vv{v}${tri(v[0],v[1],v[2])}$. Produit scalaire $\\vv{u} \\cdot \\vv{v}$ ?`, options: [`$${ps}$`, `$${ps+2}$`, `$${-ps}$`, `$${ps+5}$`], correct: 0, explanation: `$\\vv{u} \\cdot \\vv{v} = xx' + yy' + zz' = ${ps}$.` };
+                }
+            ],
+            6: [
+                () => {
+                    const u = [1, 2, -1], v = [2, -1, 0];
+                    return { q: `Les vecteurs $\\vv{u}${tri(1,2,-1)}$ et $\\vv{v}${tri(2,-1,0)}$ sont-ils orthogonaux ?`, options: ['Oui', 'Non', 'Colinéaires', 'Impossible'], correct: 0, explanation: `Produit scalaire nul ($1\\times 2 + 2\\times(-1) + (-1)\\times 0 = 0$) : ils sont orthogonaux.` };
+                }
+            ],
+            7: [
+                () => {
+                    const a = rndNZ(-3,3), b = rndNZ(-3,3), c = rndNZ(-3,3), d = rnd(-10,10);
+                    const M = [rnd(-3,3), rnd(-3,3), rnd(-3,3)];
+                    const val = a*M[0] + b*M[1] + c*M[2] + d;
+                    const inside = val === 0;
+                    if(!inside) M[2] += 1;
+                    return { q: `Le plan $\\mathcal{P} : ${a}x + ${fmt(b)}y + ${fmt(c)}z + ${d} = 0$ passe-t-il par $M${tri(M[0],M[1],M[2])}$ ?`, options: inside ? ['Oui', 'Non'] : ['Non', 'Oui'], correct: 0, explanation: `En remplaçant, on obtient ${a}(${M[0]}) + ... = ${val} (doit valoir 0).` };
+                }
+            ],
+            8: [
+                () => {
+                    return { q: `Quelle est la formule de la distance d'un point $A$ à un plan $\\mathcal{P} : ax + by + cz + d = 0$ ?`, options: [`$\\frac{|ax_A + by_A + cz_A + d|}{\\sqrt{a^2+b^2+c^2}}$`, `$\\frac{ax_A + by_A + cz_A + d}{a^2+b^2+c^2}$`, `$\\sqrt{a^2+b^2+c^2}$`, `$|ax_A + by_A + cz_A + d|$`], correct: 0, explanation: `C'est le cours : $\\frac{|ax_A + by_A + cz_A + d|}{\\sqrt{a^2+b^2+c^2}}$.` };
+                }
+            ]
+        };
+
+        /* ---------- TOUTES LES QUESTIONS FIXES D'ORIGINE (MISSIONS 1 À 8) ---------- */
+        const fixedQuestions = {
+            1: [
+                { q: 'Dans un repère $(O; \\vv{i}, \\vv{j}, \\vv{k})$, les coordonnées de $\\vv{k}$ sont :', options: ['$(0; 0; 1)$', '$(1; 0; 0)$', '$(0; 1; 0)$', '$(1; 1; 1)$'], correct: 0, explanation: '$\\vv{k}$ est le troisième vecteur de base.' },
+                { q: 'Quelle est la relation de Chasles pour trois points $A$, $B$, $C$ ?', options: ['$\\vv{AB} + \\vv{BC} = \\vv{AC}$', '$\\vv{AB} + \\vv{AC} = \\vv{BC}$', '$\\vv{AB} - \\vv{BC} = \\vv{AC}$', '$\\vv{AB} = \\vv{BA}$'], correct: 0, explanation: 'Relation fondamentale de Chasles.' }
+            ],
+            2: [
+                { q: 'Combien de points non alignés déterminent un unique plan ?', options: ['3', '2', '4', '1'], correct: 0, explanation: 'Trois points non alignés définissent un plan unique.' },
+                { q: 'Par deux points distincts de l\'espace, il passe :', options: ['Une unique droite', 'Une infinité de droites', 'Aucune droite', 'Exactement deux droites'], correct: 0, explanation: 'Deux points distincts déterminent une unique droite.' }
+            ],
+            3: [
+                { q: 'Deux droites sans point commun et non parallèles sont dites :', options: ['Non coplanaires', 'Sécantes', 'Confondues', 'Orthogonales'], correct: 0, explanation: 'Elles ne sont contenues dans aucun plan commun.' },
+                { q: 'L\'intersection de deux plans sécants est :', options: ['Une droite', 'Un point', 'Un plan', 'Vide'], correct: 0, explanation: 'Deux plans sécants se coupent suivant une droite.' }
+            ],
+            4: [
+                { q: 'Pour $t = 0$ dans une représentation paramétrique, on obtient :', options: ['Le point initial', 'Le vecteur directeur', 'L\'origine du repère', 'Rien'], correct: 0, explanation: 'Pour $t=0$, les équations donnent le point de passage.' },
+                { q: 'Deux représentations paramétriques différentes peuvent-elles décrire la même droite ?', options: ['Oui', 'Non', 'Seulement si $t = 0$', 'Seulement si elles sont identiques'], correct: 0, explanation: 'On peut changer le point de départ et le vecteur directeur.' }
+            ],
+            5: [
+                { q: 'Si $\\vv{u} \\cdot \\vv{v} = 0$, que peut-on dire de $\\vv{u}$ et $\\vv{v}$ (non nuls) ?', options: ['Ils sont orthogonaux', 'Ils sont colinéaires', 'Ils sont coplanaires', 'Leur somme est nulle'], correct: 0, explanation: 'Définition du produit scalaire nul.' }
+            ],
+            6: [
+                { q: 'L\'orthogonalité de deux vecteurs se teste via :', options: ['Leur produit scalaire nul', 'Leur somme nulle', 'Leur déterminant nul', 'Leur norme égale'], correct: 0, explanation: '$\\vv{u} \\perp \\vv{v} \\iff \\vv{u} \\cdot \\vv{v} = 0$.' }
+            ],
+            7: [
+                { q: 'Les coefficients $a, b, c$ d\'une équation cartésienne de plan $ax+by+cz+d=0$ donnent :', options: ['Un vecteur normal au plan', 'Un vecteur directeur', 'Un point du plan', 'La distance au centre'], correct: 0, explanation: 'Le vecteur $\\vec{n}(a; b; c)$ est normal au plan.' }
+            ],
+            8: [
+                { q: 'Une droite et un plan sont sécants si :', options: ['Le vecteur directeur de la droite n\'est pas orthogonal au vecteur normal du plan', 'Ils sont parallèles', 'La droite est incluse', 'Leurs vecteurs sont colinéaires'], correct: 0, explanation: 'Condition de sécante droite-plan.' }
+            ]
+        };
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem('geospacia_state');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.missions) gameState = parsed;
+                }
+            } catch (e) {}
+            renderMap();
+            updateHeader();
+            updateReviewBtn();
+        }
+
+        function saveState() {
+            try { localStorage.setItem('geospacia_state', JSON.stringify(gameState)); } catch (e) {}
+        }
+
+        function updateHeader() {
+            document.getElementById('global-xp').textContent = gameState.xp + ' XP';
+            document.getElementById('global-level').textContent = 'Niveau ' + (Math.floor(gameState.xp / 100) + 1);
+        }
+
+        function updateQCount(val) { QUESTIONS_PER_SESSION = parseInt(val); }
+
+        function renderMap() {
+            const grid = document.getElementById('missions-grid');
+            let html = '';
+            for(let i=1; i<=8; i++) {
+                const m = gameState.missions[i] || { progress: 0, status: 'À découvrir' };
+                let badgeColor = i <= 4 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+                
+                html += `
+                <div class="glass-card p-6 rounded-2xl cursor-pointer flex flex-col justify-between" onclick="openMission(${i})">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold border ${badgeColor}">Mission ${i}</span>
+                            <span class="text-xs font-medium px-2.5 py-1 rounded-lg glass">${m.status}</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-1">${missionTitles[i].split(':')[1]}</h3>
+                        <p class="text-xs opacity-70 mb-4">${missionDescs[i]}</p>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1 opacity-70">
+                            <span>Progression</span>
+                            <span>${m.progress}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700/50 h-2 rounded-full overflow-hidden">
+                            <div class="bg-blue-500 h-full transition-all duration-500" style="width: ${m.progress}%"></div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        function showMap() {
+            if(isExamMode && confirm("Quitter l'examen annulera votre progression en cours. Continuer ?")) {
+                stopExamTimer();
+                isExamMode = false;
+            } else if(isExamMode) return;
+
+            isErrorReviewMode = false;
+            document.getElementById('module-view').classList.add('hidden');
+            document.getElementById('map-view').classList.remove('hidden');
+            document.getElementById('exam-timer').classList.add('hidden');
+            renderMap();
+            updateReviewBtn();
+            typeset();
+        }
+
+        function confirmExitModule() {
+            if(isExamMode) {
+                if(confirm("Voulez-vous vraiment abandonner l'examen ?")) {
+                    stopExamTimer();
+                    isExamMode = false;
+                    showMap();
+                }
+            } else {
+                showMap();
+            }
+        }
+
+        function updateReviewBtn() {
+            const btn = document.getElementById('review-btn');
+            const txt = document.getElementById('review-btn-text');
+            if(gameState.errorQueue && gameState.errorQueue.length > 0) {
+                btn.classList.remove('hidden');
+                txt.textContent = `Réviser mes erreurs (${gameState.errorQueue.length})`;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        function openMission(id) {
+            currentMissionId = id;
+            isExamMode = false;
+            isErrorReviewMode = false;
+            document.getElementById('exam-timer').classList.add('hidden');
+            document.getElementById('mission-title').textContent = missionTitles[id];
+            
+            buildSessionQuestions(id);
+            initSessionView();
+        }
+
+        function buildSessionQuestions(id) {
+            const gens = generators[id] || [];
+            const fixes = fixedQuestions[id] || [];
+            const session = [];
+
+            const nbGen = Math.min(Math.ceil(QUESTIONS_PER_SESSION / 2), QUESTIONS_PER_SESSION);
+            for(let i=0; i<nbGen; i++) {
+                if(gens.length > 0) session.push(gens[rnd(0, gens.length - 1)]());
+            }
+            let fi = 0;
+            while(session.length < QUESTIONS_PER_SESSION && fi < fixes.length) {
+                session.push(fixes[fi++]);
+            }
+            while(session.length < QUESTIONS_PER_SESSION && gens.length > 0) {
+                session.push(gens[rnd(0, gens.length - 1)]());
+            }
+            currentQuestions = shuffle(session);
+        }
+
+        function startErrorReview() {
+            if(!gameState.errorQueue || gameState.errorQueue.length === 0) return;
+            isErrorReviewMode = true;
+            isExamMode = false;
+            currentMissionId = null;
+            document.getElementById('exam-timer').classList.add('hidden');
+            document.getElementById('mission-title').textContent = "Révision ciblée des erreurs";
+            currentQuestions = shuffle(gameState.errorQueue);
+            initSessionView();
+        }
+
+        function startExam() {
+            isExamMode = true;
+            isErrorReviewMode = false;
+            currentMissionId = null;
+            document.getElementById('mission-title').textContent = "Mode Examen Officiel (20 Questions)";
+            
+            let all = [];
+            for(let i=1; i<=8; i++) {
+                const gens = generators[i] || [];
+                gens.forEach(g => all.push(g()));
+            }
+            currentQuestions = shuffle(all).slice(0, 20);
+            
+            timeLeft = 1200;
+            document.getElementById('exam-timer').classList.remove('hidden');
+            startExamTimer();
+            initSessionView();
+        }
+
+        function startExamTimer() {
+            stopExamTimer();
+            updateTimerDisplay();
+            examTimerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if(timeLeft <= 0) {
+                    stopExamTimer();
+                    alert("Temps écoulé ! Fin de l'examen.");
+                    showResult();
+                }
+            }, 1000);
+        }
+
+        function stopExamTimer() {
+            if(examTimerInterval) clearInterval(examTimerInterval);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            document.getElementById('exam-timer').innerHTML = `<i class="fa-solid fa-clock mr-2"></i>${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        }
+
+        function initSessionView() {
+            currentQuestionIndex = 0;
+            sessionScore = 0;
+            document.getElementById('map-view').classList.add('hidden');
+            document.getElementById('module-view').classList.remove('hidden');
+            document.getElementById('restart-btn').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = currentQuestions[currentQuestionIndex];
+            const container = document.getElementById('question-container');
+            const feedback = document.getElementById('feedback');
+            feedback.classList.add('hidden');
+            feedback.innerHTML = '';
+            document.getElementById('next-btn').classList.add('hidden');
+
+            const indexed = q.options.map((text, i) => ({ text, ok: i === q.correct }));
+            q._mixed = shuffle(indexed);
+
+            let html = `
+                <div class="flex justify-between items-center mb-4 text-xs opacity-75">
+                    <span>Question ${currentQuestionIndex + 1} / ${currentQuestions.length}</span>
+                    <div class="w-32 bg-gray-700/50 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full" style="width: ${(currentQuestionIndex / currentQuestions.length) * 100}%"></div>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold mb-6 leading-relaxed">${q.q}</h3>
+                <div class="space-y-3">`;
+
+            q._mixed.forEach((opt, i) => {
+                html += `<button class="option-btn option-card w-full text-left px-5 py-3.5 rounded-xl border font-medium transition" onclick="selectAnswer(${i})">${opt.text}</button>`;
+            });
+            html += `</div>`;
+
+            container.innerHTML = html;
+            document.getElementById('score-display').textContent = `Score actuel : ${sessionScore} / ${currentQuestionIndex}`;
+            typeset();
+        }
+
+        function selectAnswer(i) {
+            const q = currentQuestions[currentQuestionIndex];
+            const mixed = q._mixed;
+            const buttons = document.querySelectorAll('.option-btn');
+            const feedback = document.getElementById('feedback');
+            const isCorrect = mixed[i].ok;
+
+            buttons.forEach((btn, idx) => {
+                btn.disabled = true;
+                btn.style.cursor = 'default';
+                if(mixed[idx].ok) {
+                    btn.style.borderColor = 'rgba(16, 185, 129, 0.8)';
+                    btn.style.background = 'rgba(16, 185, 129, 0.2)';
+                } else if(idx === i) {
+                    btn.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+                    btn.style.background = 'rgba(239, 68, 68, 0.2)';
+                }
+            });
+
+            if(isCorrect) {
+                sessionScore++;
+                if(!isExamMode) gameState.xp += 10;
+                feedback.className = 'mt-6 p-4 rounded-xl text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-check mr-2"></i><strong>Bonne réponse !</strong> ${q.explanation}`;
+                
+                if(isErrorReviewMode) {
+                    gameState.errorQueue = gameState.errorQueue.filter(item => item.q !== q.q);
+                }
+            } else {
+                feedback.className = 'mt-6 p-4 rounded-xl text-sm bg-rose-500/10 border border-rose-500/30 text-rose-400';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i><strong>Ce n'est pas correct.</strong> ${q.explanation}`;
+                
+                if(!isExamMode && !isErrorReviewMode) {
+                    if(!gameState.errorQueue.some(item => item.q === q.q)) {
+                        gameState.errorQueue.push(q);
+                    }
+                }
+            }
+
+            feedback.classList.remove('hidden');
+            document.getElementById('score-display').textContent = `Score actuel : ${sessionScore} / ${currentQuestionIndex + 1}`;
+
+            const nextBtn = document.getElementById('next-btn');
+            if(currentQuestionIndex < currentQuestions.length - 1) {
+                nextBtn.innerHTML = 'Question suivante <i class="fa-solid fa-arrow-right ml-2"></i>';
+            } else {
+                nextBtn.innerHTML = isExamMode ? 'Voir la note de l\'examen <i class="fa-solid fa-flag-checkered ml-2"></i>' : 'Terminer la série <i class="fa-solid fa-flag-checkered ml-2"></i>';
+            }
+            nextBtn.classList.remove('hidden');
+            updateHeader();
+            typeset();
+        }
+
+        function loadNextQuestion() {
+            currentQuestionIndex++;
+            if(currentQuestionIndex >= currentQuestions.length) {
+                showResult();
+            } else {
+                renderQuestion();
+            }
+        }
+
+        function showResult() {
+            if(isExamMode) stopExamTimer();
+
+            const total = currentQuestions.length;
+            const pct = Math.round((sessionScore / total) * 100);
+
+            if(isExamMode) {
+                const note20 = ((sessionScore / total) * 20).toFixed(1);
+                gameState.xp += sessionScore * 5;
+                document.getElementById('question-container').innerHTML = `
+                    <div class="text-center py-6">
+                        <i class="fa-solid fa-graduation-cap text-5xl text-amber-400 mb-4"></i>
+                        <h3 class="text-3xl font-bold mb-2">Note : ${note20} / 20</h3>
+                        <p class="opacity-75 mb-4">(${sessionScore} bonnes réponses sur ${total} - ${pct}%)</p>
+                        <p class="text-sm opacity-90">L'examen est terminé. Continuez à vous entraîner !</p>
+                    </div>`;
+            } else if(isErrorReviewMode) {
+                document.getElementById('question-container').innerHTML = `
+                    <div class="text-center py-6">
+                        <i class="fa-solid fa-rotate-right text-5xl text-blue-400 mb-4"></i>
+                        <h3 class="text-2xl font-bold mb-2">Révision terminée !</h3>
+                        <p class="opacity-75 mb-4">Score de révision : ${sessionScore} / ${total}</p>
+                    </div>`;
+            } else {
+                const m = gameState.missions[currentMissionId];
+                m.progress = Math.max(m.progress, pct);
+                if(pct >= 70) m.status = 'Validée';
+                else if(m.status !== 'Validée') m.status = 'En cours';
+                if(pct === 100) gameState.xp += 30;
+
+                let icon = 'fa-medal', color = 'text-emerald-400';
+                if(pct < 50) { icon = 'fa-book-open'; color = 'text-rose-400'; }
+
+                document.getElementById('question-container').innerHTML = `
+                    <div class="text-center py-6">
+                        <i class="fa-solid ${icon} text-5xl ${color} mb-4"></i>
+                        <h3 class="text-2xl font-bold mb-2">${sessionScore} / ${total} (${pct}%)</h3>
+                        <p class="opacity-75 mb-4">Mission ${currentMissionId} mise à jour.</p>
+                    </div>`;
+                document.getElementById('restart-btn').classList.remove('hidden');
+            }
+
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('score-display').textContent = '';
+            saveState();
+            updateReviewBtn();
+            typeset();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if(html.getAttribute('data-theme') === 'dark') {
+                html.setAttribute('data-theme', 'light');
+                icon.className = 'fa-solid fa-sun text-amber-500';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                icon.className = 'fa-solid fa-moon text-blue-300';
+            }
+        }
+
+        function typeset() {
+            if(window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise().catch(() => {});
+            }
+        }
+
+        window.onload = () => { loadState(); };
+    </script>
+</body>
+</html>
